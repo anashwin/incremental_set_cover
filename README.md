@@ -1,0 +1,197 @@
+
+RIPS 2015 - Symantec Group
+
+Students Participants
+Ashwin Narayan (ashwin.narayan@williams.edu)
+Anna King
+Natalia Postawa
+Vuk Markovic
+
+Academic Mentor
+Alejandro Morales
+
+====================================== CODE DOCUMENTATION =============================================
+
+We list the methods in each file of code. We only list methods that are useful for a user. Unfortunately 
+I cannot figure out how to get the databases online. 
+
+-------------------------------------------------------------------------------------------------------
+1. demo.py - This file can be used to run any of the aspects of the program. Specific instructions are 
+             contained in the comments in the file itself. Out of the box, running: 
+
+	     python demo.py 
+	     
+	     will run both the non-real-time and real-time algorithms with default parameters
+
+-------------------------------------------------------------------------------------------------------
+Outward facing methods. The following methods are pre-written and will run the entire algorithm from 
+start to finish with fully customizable parameters. 
+
+2. full_clustering_procedure.py
+   full_clustering_procedure(ndata = 100000, N=50000, nmachines = 50, min_q_len = 6, max_q_len = 15, 
+                              number_of_clusterings=1, queryfile = None, gcpa_type='better')
+   This method runs the non-real-time clustering procedure with the default parameters given above. 
+   Returns a GCPA object from which clusters and covers can be extracted. 
+   Parameters: 
+       ndata: number of data elements to consider
+       N: number of queries
+       nmachines: number of machines
+       min_q_len, max_q_len: minimum and maximum length of a query
+       number_of_clusterings: number of times the algorithm should run
+       queryfile: if None, then we generate queries
+       		  if you want to use already generated queries, put in the name of the CSV file 
+		  (WITHOUT THE EXTENSION) where the queries are stored
+       gcpa_type: set to 'better' if we want to use BetterGreedy for processing
+                  set to 'linear' if we want to use the normal greedy algorithm	
+
+3. full_clustering_procedure_comparisons
+   full_clustering_procedure(ndata = 100000, N=50000, nmachines = 50, min_q_len = 6, max_q_len = 15, 
+                              number_of_clusterings=1, queryfile = None): 
+   This method runs the non-real-time clustering procedure, and then also runs N-greedy and the two baseline 
+   algorithms for comparison. It generates an output CSV file comparing the optimality of each of the methods, 
+   and also prints out the average time per query each method took. 
+   Parameters: 
+       Same as above
+
+4. full_realtime.py
+   full_realtime(precompute_fraction=.4, nqueries=50000, ndataunits=100000, nmachines=50, r=3, np=.995,
+                  min_q_len=6, max_q_len=15, ctype='fast', gcpatype='better', queryfile=None)
+   This method runs the real-time procedure, using a specified fraction to precompute. The method returns a 
+   GCPA object (which contains information about the precomputed queries), the real-time queries, and a list 
+   of covers for the real-time queries
+   Parameters: 
+       precompute_fraction: the fraction of queries to be used for pre-computing
+       nqueries: number of queries we want
+       ndataunits: number of data elements we want
+       nmachines: number of machines
+       r: repetition factor
+       np: random graph property
+       min_q_len, max_q_len: min and max length of a query
+       ctype: if 'fast' use the fast clustering procedure
+       	      if 'full' use the full clustering procedure
+       gcpatype: if 'better' use BetterGreedy
+       		 if 'linear' use the normal greedy algorithm
+       queryfile: if None, then we generate queries
+       		  if you want to use already generated queries, put in the name of the CSV file 
+		  (WITHOUT THE EXTENSION) where the queries are stored
+
+5. full_realtime_comparisons.py
+   full_realtime(precompute_fraction=.4, nqueries=50000, ndataunits=100000, nmachines=50, r=3, np=.995,
+                  min_q_len=6, max_q_len=15, ctype='both', gcpatype='both', queryfile=None)
+   This runs the real-time procedure as above but also compares it to results generated from the 
+   reference algorithms. It generates output CSV files for time and optimality comparisons (only of 
+   the real-time queries)
+   Parameters: 	
+       All are the same as above except:
+       ctype, gcpa_type: set to 'both' if you want both types of clustering and processing to be 
+                         analyzed
+
+-----------------------------------------------------------------------------------------------------------
+Classes. We have four main classes that store the vital information of the program
+
+6. cluster.py
+   class Cluster
+   Contains the data about a cluster
+   Instance variables: 
+       queries: the list of queries in the cluster
+       span: the number of unique data elements covered by elements in queries in the clsuter
+       min_query_len: length of the smallest query
+   Methods: 
+       __init__(self, queries=[]): creates a Cluster object with the given list of queries
+       __or__(self, other): return a new cluster with the union of the sets of queries in self and 
+                            other (use self|other)
+       __ior__(self, other): adds the queries of another cluster to this cluster (use self|=other)
+       __getitem__(self): allows use to use [] to index the cluster with queries
+       __len__(self): returns number of queries in the cluster
+       aligned_output(self): prints out a neatly formatted output of the cluster
+
+7. clustering.py
+   class Clustering
+   Contains the data about a clustering. So to cluster a list of queries, we just need to create a Clustering
+   object with the list of queries that we want to cluster
+   Instance variables: 
+       theta_1, theta_2: thresholds described in the paper
+       queries_processed: number of queries that we have processed so far
+       clusters: list of clusters in the clustering
+       cl_entropies: a list containing the entropy information of the cluster
+       		     format = [number of queries, {element:frequency}, entropy]
+       cluster_count: number of clusters
+       data_hash: contains the potential clusters each data element is in
+       prev_exp_entropy: the expected entropy of a cluster before a query is added 
+   Methods: 
+       __init__(self, queries=[], theta_1=theta_2 = .5): clusters the list of queries with the given thresholds
+       insert_rt_fast(self, query): fast method of inserting a query
+       insert_rt_noupdate(self, query): inserts a query into the clustering using the full method
+       insert_rt_update(self, query): inserts the query and then updates the cluster's entropy and frequency
+
+8. gcpa_fast.py
+   class GCPA	
+   Used for processing a clustering using the normal greedy algorithm. To pre-process a cluster, create a GCPA 
+   object with the clustering and the total number of data units as inputs. Then run process with machines and 
+   the data_unit_in_machine hash table as inputs to process. 
+   Instance variables: 	    
+       queues: for each cluster, the list of data parts that need to be processed, in order
+       partindex_by_cluster: for each cluster, gives the parts that cover each data element in that cluster
+       partcover_by_cluster: given an index of a part, this gives the cover of that part
+
+9. gcpa_better.py
+   class GPCA_better
+   The same as above, except we use better greedy instead of greedy for all computations. 
+
+-----------------------------------------------------------------------------------------------------------
+Other various important methods
+
+10. linear_greedy.py
+    linear_greedy(query, machines, dataunit_in_machine)
+    Returns the cover of query. 
+    Parameters: 
+        query: the query to be covered (as a set)
+	machines: the list of machines
+	dataunit_in_machine: hash table where keys are data elements and they point to the machines they are in
+    
+    generate_hash(machines, data_size)
+    Given the machines and the number of data elements, creates the dataunit_in_machine table
+    Parameters: 
+        machines: the set of machines
+	data_size: the number of data units (we assume data units are labeled 1, 2, ... , data_size
+
+11. graph_query_gen.py
+    iterative_dfs(graph, start, path=[], min_len=6, max_len=15)
+    Given a graph and a query size, this returns a query using the query generation algorithm
+    Paramaters: 
+        graph: an Erdos-Renyi graph
+	start: the node to use as a starting point
+	path: use if you want to use a prefix for the query
+	min_len, max_len: the range of lengths that the query should be
+
+12. generate_machines.py
+    generate(data, m, rep=3)
+    Randomly assorts data into machines with the given replication factor. Returns a list of sets
+    Parameters:
+        data: the list of all possible data points     
+	m: the number of machines
+	rep: the replication factor
+
+13. baseline.py
+    baseline(query, machines, dataunit_in_machine)
+    Covers the query using the baseline method (randomly choose machines that intersect the query)
+    Parameters: 
+        Same as linear_greedy above
+	
+    better_baseline(query, machines, dataunit_in_machine): 
+    Covers the query using a "smarter" baseline method: Choose an uncovered data unit, and then randomly
+    choose a machine which covers that unit
+    Parameters: 
+        Same as linear_greedy above
+
+-----------------------------------------------------------------------------------------------------------
+Housekeeping methods for accessing and/or writing to file
+
+14. extract_clusters.py
+    extract_clusters(filenames)
+    Returns a list of clusters (which are lists of queries) contained in the outfile generated by the
+    clustering algorithm.
+    Parameters: 
+        filename: the name of the file (WITH EXTENSION) containing the clusters
+
+===========================================================================================================
